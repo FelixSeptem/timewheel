@@ -129,7 +129,7 @@ func getMachineID() (uint16, error) {
 // add a new task into time wheel return task's ID
 func (tw *TimeWheel) AddTask(delayDurations time.Duration, handler TaskHandler) (string, error) {
 	if delayDurations <= 0 {
-		return "", errors.New("invalid time")
+		return "", fmt.Errorf("invalid time:%v", delayDurations)
 	}
 	slotLocation := int((delayDurations % tw.cycleTime) / tw.stepDuration)
 	cycleNum := delayDurations / tw.cycleTime

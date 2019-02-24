@@ -51,7 +51,7 @@ func BenchmarkTimeWheel_AddTask(b *testing.B) {
 	}
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		if _, err := tw.AddTask(time.Second*time.Duration(rand.Uint64() + 1), handler); err != nil {
+		if _, err := tw.AddTask(time.Second*time.Duration(rand.Uint32()%86400 + 1), handler); err != nil {
 			b.Error(err)
 		}
 	}
