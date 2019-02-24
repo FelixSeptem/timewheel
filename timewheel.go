@@ -128,6 +128,9 @@ func getMachineID() (uint16, error) {
 
 // add a new task into time wheel return task's ID
 func (tw *TimeWheel) AddTask(delayDurations time.Duration, handler TaskHandler) (string, error) {
+	if delayDurations <= 0 {
+		return "", errors.New("invalid time")
+	}
 	slotLocation := int((delayDurations % tw.cycleTime) / tw.stepDuration)
 	cycleNum := delayDurations / tw.cycleTime
 	id, err := tw.getUID()
@@ -153,14 +156,20 @@ func (tw *TimeWheel) Run() error {
 	go func() {
 		tw.runningStatus = TIMEWHEEL_RUNNING_STATUS_RUNNING
 		ticker := time.NewTicker(tw.stepDuration)
-		select {
-		case <-ticker.C:
-			tw.pivot += 1
-			pivot := tw.pivot
-			tw.processHandler(tw.timewheel[pivot])
-		case <-tw.quit:
-			tw.runningStatus = TIMEWHEEL_RUNNING_STATUS_END
-			return
+		pivot := tw.pivot
+		for {
+			select {
+			case <-ticker.C:
+				if pivot >= tw.slotsNum {
+					pivot = pivot % tw.slotsNum
+				}
+				tw.pivot = pivot
+				tw.processHandler(tw.timewheel[pivot])
+				pivot += 1
+			case <-tw.quit:
+				tw.runningStatus = TIMEWHEEL_RUNNING_STATUS_END
+				return
+			}
 		}
 	}()
 	return nil
@@ -181,15 +190,20 @@ func (tw *TimeWheel) HandleErr() <-chan error {
 func (tw *TimeWheel) processHandler(tl *taskList) {
 	tl.mutex.Lock()
 	defer tl.mutex.Unlock()
-	for v := tl.tasks.Front(); v.Next() != nil; v = v.Next() {
-		if t := v.Value.(taskID); t.cycleNum <= 0 {
+	if tl.tasks.Len() == 0 {
+		return
+	}
+	newList := list.New()
+	for v := tl.tasks.Front(); v != nil; v = v.Next() {
+		n := v
+		if t := n.Value.(taskID); t.cycleNum == 0 {
 			go func() {
 				defer func() {
 					tw.capacityLock.Lock()
 					tw.capacity -= 1
 					tw.capacityLock.Unlock()
 					tl.mutex.Lock()
-					tl.tasks.Remove(v)
+					tl.tasks.Remove(n)
 					tl.mutex.Unlock()
 				}()
 				fun, ok := tw.taskData.Get(myStr(t.id))
@@ -204,8 +218,13 @@ func (tw *TimeWheel) processHandler(tl *taskList) {
 			}()
 		} else {
 			t.cycleNum -= 1
+			newList.PushBack(taskID{
+				id:       t.id,
+				cycleNum: t.cycleNum,
+			})
 		}
 	}
+	tl.tasks = newList
 }
 
 func (tw *TimeWheel) addTaskTotimewheel(tl *taskList, task taskID) {

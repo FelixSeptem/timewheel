@@ -1,6 +1,7 @@
 package timewheel
 
 import (
+	"math/rand"
 	"testing"
 	"time"
 )
@@ -37,5 +38,21 @@ func TestTimeWheel_Run(t *testing.T) {
 	tw := NewTimeWheel("test", 3600, time.Second, 100)
 	if err := tw.Run(); err != nil {
 		t.Fatal(err)
+	}
+}
+
+func BenchmarkTimeWheel_AddTask(b *testing.B) {
+	tw := NewTimeWheel("test", 3600, time.Second, 100)
+	if err := tw.Run(); err != nil {
+		b.Fatal(err)
+	}
+	handler := func() error {
+		return nil
+	}
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		if _, err := tw.AddTask(time.Second*time.Duration(rand.Uint64()), handler); err != nil {
+			b.Error(err)
+		}
 	}
 }
