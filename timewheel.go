@@ -137,7 +137,7 @@ func (tw *TimeWheel) AddTask(delayDurations time.Duration, handler TaskHandler) 
 	if err != nil {
 		return "", err
 	}
-	tw.addTaskTotimewheel(tw.timewheel[slotLocation], taskID{
+	tw.addTaskTotimewheel(tw.timewheel[slotLocation], &taskID{
 		id:       id,
 		cycleNum: int(cycleNum),
 	})
@@ -193,10 +193,9 @@ func (tw *TimeWheel) processHandler(tl *taskList) {
 	if tl.tasks.Len() == 0 {
 		return
 	}
-	newList := list.New()
 	for v := tl.tasks.Front(); v != nil; v = v.Next() {
 		n := v
-		if t := n.Value.(taskID); t.cycleNum == 0 {
+		if t := n.Value.(*taskID); t.cycleNum == 0 {
 			go func() {
 				defer func() {
 					tw.capacityLock.Lock()
@@ -218,16 +217,11 @@ func (tw *TimeWheel) processHandler(tl *taskList) {
 			}()
 		} else {
 			t.cycleNum -= 1
-			newList.PushBack(taskID{
-				id:       t.id,
-				cycleNum: t.cycleNum,
-			})
 		}
 	}
-	tl.tasks = newList
 }
 
-func (tw *TimeWheel) addTaskTotimewheel(tl *taskList, task taskID) {
+func (tw *TimeWheel) addTaskTotimewheel(tl *taskList, task *taskID) {
 	tl.mutex.Lock()
 	defer tl.mutex.Unlock()
 	tl.tasks.PushBack(task)
