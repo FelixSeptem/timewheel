@@ -6,4 +6,5 @@ require (
 	github.com/deckarep/golang-set v1.7.1 // indirect
 	github.com/denisbrodbeck/machineid v1.0.0
 	github.com/sony/sonyflake v0.0.0-20181109022403-6d5bd6181009
+	golang.org/x/sys v0.0.0-20190225065934-cc5685c2db12 // indirect
 )
