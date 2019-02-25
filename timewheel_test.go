@@ -41,6 +41,55 @@ func TestTimeWheel_Run(t *testing.T) {
 	}
 }
 
+func TestTimeWheel_getUID(t *testing.T) {
+	tw := NewTimeWheel("test", 3600, time.Second, 100)
+	if _, err := tw.getUID(); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestTimeWheel_getMachineID(t *testing.T) {
+	if _, err := getMachineID(); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestTimeWheel_Quit(t *testing.T) {
+	tw := NewTimeWheel("test", 3600, time.Second, 100)
+	if err := tw.Quit(); err == nil {
+		t.Error("shall raise err")
+	}
+	if err := tw.Run(); err != nil {
+		t.Fatal(err)
+	}
+	time.Sleep(time.Millisecond * 10)
+	if err := tw.Quit(); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestTimeWheel_BQuit(t *testing.T) {
+	tw := NewTimeWheel("test", 3600, time.Second, 100)
+	if err := tw.BQuit(); err == nil {
+		t.Error("shall raise err")
+	}
+	if err := tw.Run(); err != nil {
+		t.Fatal(err)
+	}
+	time.Sleep(time.Millisecond * 10)
+	if err := tw.BQuit(); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestTimeWheel_HandleErr(t *testing.T) {
+	tw := NewTimeWheel("test", 3600, time.Second, 100)
+	errs := tw.HandleErr()
+	if cap(errs) != 100 {
+		t.Errorf("expect %d,got %d", 100, cap(errs))
+	}
+}
+
 func BenchmarkTimeWheel_AddTask(b *testing.B) {
 	tw := NewTimeWheel("test", 3600, time.Second, 100)
 	if err := tw.Run(); err != nil {
@@ -51,7 +100,7 @@ func BenchmarkTimeWheel_AddTask(b *testing.B) {
 	}
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		if _, err := tw.AddTask(time.Second*time.Duration(rand.Uint32()%86400 + 1), handler); err != nil {
+		if _, err := tw.AddTask(time.Second*time.Duration(rand.Uint32()%86400+1), handler); err != nil {
 			b.Error(err)
 		}
 	}

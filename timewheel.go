@@ -65,7 +65,10 @@ type taskList struct {
 	tasks *list.List
 }
 
-// return a new time wheel of given parameters
+// return a new time wheel of given parameters for example:
+// NewTimeWheel("example", 3600, time.Second, 100)
+// will return a TimeWheel which has accuracy of 1 second and running around once an hour(3600 * 1s), it has an err channel to receive
+// task handler's return err,which has 100 capacity.
 func NewTimeWheel(name string, slotsNum int, stepDuration time.Duration, errSize int) *TimeWheel {
 	if slotsNum <= 0 {
 		slotsNum = DEFAULT_TIMEWHEEL_SLOTSNUM
@@ -185,6 +188,34 @@ func (tw *TimeWheel) Info() (name string, startTime time.Time, capacity int64) {
 // return task handler's errs to handle
 func (tw *TimeWheel) HandleErr() <-chan error {
 	return tw.errs
+}
+
+// quit timewheel may lost unfinished task, concurrent quit may cause panic due to golang's channel close principle
+func (tw *TimeWheel) Quit() error {
+	if tw.runningStatus != TIMEWHEEL_RUNNING_STATUS_RUNNING {
+		return fmt.Errorf("invalid running status:%d", tw.runningStatus)
+	}
+	close(tw.quit)
+	return nil
+}
+
+// BQuit will blocking until all task in the timewheel has been finished,then quit
+func (tw *TimeWheel) BQuit() error {
+	if tw.runningStatus != TIMEWHEEL_RUNNING_STATUS_RUNNING {
+		return fmt.Errorf("invalid running status:%d", tw.runningStatus)
+	}
+	go func() {
+		for {
+			tw.capacityLock.RLock()
+			if tw.capacity == 0 && tw.runningStatus == TIMEWHEEL_RUNNING_STATUS_RUNNING {
+				close(tw.quit)
+				return
+			}
+			tw.capacityLock.RUnlock()
+
+		}
+	}()
+	return nil
 }
 
 func (tw *TimeWheel) processHandler(tl *taskList) {
