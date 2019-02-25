@@ -51,6 +51,9 @@ func main() {
 	if _, err := tw.AddTask(time.Second*15, fun15s); err != nil {
 		fmt.Println(err.Error())
 	}
+	if err := tw.BQuit(); err != nil {
+		fmt.Println(err.Error())
+	}
 	time.Sleep(time.Second * 60)
 }
 

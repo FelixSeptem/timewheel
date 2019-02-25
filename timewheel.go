@@ -44,20 +44,21 @@ type taskID struct {
 
 // timewheel entity
 type TimeWheel struct {
-	capacityLock  sync.RWMutex
-	name          string
-	startTime     time.Time
-	idGen         *sonyflake.Sonyflake
-	timewheel     []*taskList
-	pivot         int
-	slotsNum      int
-	stepDuration  time.Duration
-	taskData      *cmap.ConcurrentMap
-	errs          chan error
-	cycleTime     time.Duration
-	capacity      int64
-	quit          chan struct{}
-	runningStatus int
+	capacityLock      sync.RWMutex
+	runningStatusLock sync.RWMutex
+	name              string
+	startTime         time.Time
+	idGen             *sonyflake.Sonyflake
+	timewheel         []*taskList
+	pivot             int
+	slotsNum          int
+	stepDuration      time.Duration
+	taskData          *cmap.ConcurrentMap
+	errs              chan error
+	cycleTime         time.Duration
+	capacity          int64
+	quit              chan struct{}
+	runningStatus     int
 }
 
 type taskList struct {
@@ -153,11 +154,15 @@ func (tw *TimeWheel) AddTask(delayDurations time.Duration, handler TaskHandler) 
 
 // start time consume
 func (tw *TimeWheel) Run() error {
+	tw.runningStatusLock.RLock()
+	defer tw.runningStatusLock.RUnlock()
 	if tw.runningStatus != TIMEWHEEL_RUNNING_STATUS_INIT {
 		return errors.New("invalid timewheel running status")
 	}
 	go func() {
+		tw.runningStatusLock.Lock()
 		tw.runningStatus = TIMEWHEEL_RUNNING_STATUS_RUNNING
+		tw.runningStatusLock.Unlock()
 		ticker := time.NewTicker(tw.stepDuration)
 		pivot := tw.pivot
 		for {
@@ -192,6 +197,8 @@ func (tw *TimeWheel) HandleErr() <-chan error {
 
 // quit timewheel may lost unfinished task, concurrent quit may cause panic due to golang's channel close principle
 func (tw *TimeWheel) Quit() error {
+	tw.runningStatusLock.RLock()
+	defer tw.runningStatusLock.RUnlock()
 	if tw.runningStatus != TIMEWHEEL_RUNNING_STATUS_RUNNING {
 		return fmt.Errorf("invalid running status:%d", tw.runningStatus)
 	}
@@ -201,18 +208,21 @@ func (tw *TimeWheel) Quit() error {
 
 // BQuit will blocking until all task in the timewheel has been finished,then quit
 func (tw *TimeWheel) BQuit() error {
+	tw.runningStatusLock.RLock()
+	defer tw.runningStatusLock.RUnlock()
 	if tw.runningStatus != TIMEWHEEL_RUNNING_STATUS_RUNNING {
 		return fmt.Errorf("invalid running status:%d", tw.runningStatus)
 	}
 	go func() {
 		for {
 			tw.capacityLock.RLock()
+			tw.runningStatusLock.RLock()
 			if tw.capacity == 0 && tw.runningStatus == TIMEWHEEL_RUNNING_STATUS_RUNNING {
 				close(tw.quit)
 				return
 			}
 			tw.capacityLock.RUnlock()
-
+			tw.runningStatusLock.RUnlock()
 		}
 	}()
 	return nil
