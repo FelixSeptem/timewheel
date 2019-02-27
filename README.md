@@ -5,6 +5,7 @@ a time wheel similar with Netty's [HashedTimeWheel](https://netty.io/4.1/api/ind
 [![Coverage Status](https://coveralls.io/repos/github/FelixSeptem/timewheel/badge.svg?branch=master)](https://coveralls.io/github/FelixSeptem/timewheel?branch=master)
 [![Go Report Card](https://goreportcard.com/badge/github.com/FelixSeptem/timewheel)](https://goreportcard.com/report/github.com/FelixSeptem/timewheel)
 [![GoDoc](http://godoc.org/github.com/FelixSeptem/timewheel?status.svg)](http://godoc.org/github.com/FelixSeptem/timewheel)
+[![GolangCI](https://golangci.com/badges/github.com/FelixSeptem/timewheel.svg)](https://golangci.com/r/github.com/FelixSeptem/timewheel)
 
 ### Install
 ```go
